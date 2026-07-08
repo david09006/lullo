@@ -19,6 +19,14 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
+    // Clickjacking protection (paired with X-Frame-Options: DENY).
+    frameAncestors: ["'none'"],
+    // Fonts are self-hosted — no third-party font origins.
+    fontSrc: ["'self'"],
+    // Product photos will come from the Shopify CDN; placeholders are inline SVG.
+    imgSrc: ["'self'", 'data:', 'https://cdn.shopify.com'],
+    // External stylesheet + inline style attributes (React style props).
+    styleSrc: ["'self'", "'unsafe-inline'"],
   });
 
   const body = await renderToReadableStream(

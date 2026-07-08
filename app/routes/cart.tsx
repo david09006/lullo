@@ -4,6 +4,7 @@ import {handleCartAction} from '~/lib/cart/actions';
 import {getSessionCart} from '~/lib/cart/session-cart';
 import {buildCartView} from '~/lib/cart/resolver';
 import {isCheckoutLive} from '~/lib/catalog';
+import {assertSameOrigin} from '~/lib/security';
 import {CartPanel} from '~/components/CartPanel';
 
 export const meta: Route.MetaFunction = () => {
@@ -11,6 +12,7 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export async function action({request, context}: Route.ActionArgs) {
+  assertSameOrigin(request);
   const formData = await request.formData();
   const result = await handleCartAction(context.session, formData);
 

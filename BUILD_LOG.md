@@ -32,6 +32,26 @@ stays on Shopify (PCI-safe). Public Storefront token only — no Admin token.
 
 ## Phase log
 
+### Phase 4 — security hardening
+- **Security headers** (`app/lib/security.ts`, applied in `server.ts`; CSP in
+  `entry.server.tsx`): nonce CSP with `frame-ancestors 'none'`, self-only fonts,
+  scoped img/connect; HSTS (https only), `nosniff`, `X-Frame-Options: DENY`,
+  Referrer-Policy, Permissions-Policy, COOP. **Verified emitted** via curl and no
+  CSP violations in-browser.
+- **CSRF**: `assertSameOrigin` guards cart/contact/newsletter actions (403 on
+  cross-origin), layered on `SameSite=Lax`.
+- **Webhooks**: `/webhooks/shopify` verifies HMAC-SHA256 (Web Crypto,
+  constant-time), fails closed without `SHOPIFY_WEBHOOK_SECRET`.
+- **Input**: server-side validation/sanitization; output auto-escaped by React;
+  the one `dangerouslySetInnerHTML` is our own authored copy, not user input.
+- **Secrets**: build-time scan confirms **no** `PRIVATE_*`/`SESSION_SECRET` in
+  `dist/client`. `npm audit` findings are all build-tooling (lodash/esbuild/ws
+  via codegen/vite/mini-oxygen) — confirmed absent from the deployed server
+  bundle; not force-fixed (would break Shopify's toolchain).
+- **Docs**: `SECURITY.md` documents the full posture + go-live items.
+- 10 new security tests (same-origin, headers, HMAC, timing-safe compare) →
+  **49 tests total**. Gate green.
+
 ### Phase 3 — content pages + custom 404
 - Built **About/story** (editorial origin story + values), **FAQ** (native
   `<details>` accordion — accessible, no-JS friendly), **Contact** (validated,

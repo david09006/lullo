@@ -2,8 +2,10 @@ import {data, redirect} from 'react-router';
 import type {Route} from './+types/newsletter';
 import {isValidEmail} from '~/lib/validation';
 import {checkRateLimit} from '~/lib/rate-limit';
+import {assertSameOrigin} from '~/lib/security';
 
 export async function action({request}: Route.ActionArgs) {
+  assertSameOrigin(request);
   const rate = checkRateLimit(request, 'newsletter', {limit: 5, windowMs: 60_000});
   if (!rate.ok) {
     return data(

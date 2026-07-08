@@ -1,6 +1,7 @@
 import * as serverBuild from 'virtual:react-router/server-build';
 import {createRequestHandler, storefrontRedirect} from '@shopify/hydrogen';
 import {createHydrogenRouterContext} from '~/lib/context';
+import {applySecurityHeaders} from '~/lib/security';
 
 /**
  * Export a fetch handler in module format.
@@ -29,6 +30,10 @@ export default {
       });
 
       const response = await handleRequest(request);
+
+      // Apply static security headers to every response (CSP is set per-render
+      // in entry.server.tsx and is preserved here).
+      applySecurityHeaders(response, request);
 
       if (hydrogenContext.session.isPending) {
         response.headers.set(

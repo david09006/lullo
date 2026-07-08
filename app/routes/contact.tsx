@@ -2,6 +2,7 @@ import {Form, data, useActionData, useNavigation} from 'react-router';
 import type {Route} from './+types/contact';
 import {sanitizeText, validateFields, type ValidationErrors} from '~/lib/validation';
 import {checkRateLimit} from '~/lib/rate-limit';
+import {assertSameOrigin} from '~/lib/security';
 
 type ContactValues = {name: string; email: string; message: string};
 
@@ -11,6 +12,7 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 export async function action({request}: Route.ActionArgs) {
+  assertSameOrigin(request);
   const rate = checkRateLimit(request, 'contact', {limit: 5, windowMs: 60_000});
   if (!rate.ok) {
     const errors: ValidationErrors = {
