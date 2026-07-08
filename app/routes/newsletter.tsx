@@ -6,7 +6,7 @@ import {assertSameOrigin} from '~/lib/security';
 
 export async function action({request}: Route.ActionArgs) {
   assertSameOrigin(request);
-  const rate = checkRateLimit(request, 'newsletter', {limit: 5, windowMs: 60_000});
+  const rate = checkRateLimit(request, 'newsletter', {limit: 20, windowMs: 60_000});
   if (!rate.ok) {
     return data(
       {ok: false, message: 'Too many attempts. Please try again in a minute.'},

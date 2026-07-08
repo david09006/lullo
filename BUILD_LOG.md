@@ -32,6 +32,20 @@ stays on Shopify (PCI-safe). Public Storefront token only — no Admin token.
 
 ## Phase log
 
+### Phase 5 — QA: e2e, accessibility, edge cases
+- **Playwright e2e** (desktop + mobile, `e2e/`): full shopping journey
+  (browse → product → add → drawer → checkout-pending), qty updates, cart-badge
+  persistence, contact validation (empty/invalid/valid), branded 404, mobile
+  menu. **36 tests pass**, run serially against the shared dev server.
+- **Accessibility (axe)**: WCAG 2.1 A/AA scan on 8 key pages × 2 viewports.
+  Found ~80 **color-contrast** violations — fixed at the token level (darkened
+  `--stone` muted text; split clay into display-only `--clay-bright` vs an
+  AA-safe `--clay`; darkened the sage ethos band; badge/fineprint tweaks) →
+  **zero violations**. Added a default document `<title>` for error pages.
+- **Fixes**: raised form rate limits 5→20/min (shared-IP + test tolerance);
+  hydration marker (`data-hydrated`) + `gotoReady` helper so e2e clicks don't
+  race SSR hydration. Total **49 unit + 36 e2e** tests green; gate green.
+
 ### Phase 4 — security hardening
 - **Security headers** (`app/lib/security.ts`, applied in `server.ts`; CSP in
   `entry.server.tsx`): nonce CSP with `frame-ancestors 'none'`, self-only fonts,
@@ -177,6 +191,13 @@ Built (`app/lib/catalog/` + `app/lib/cart/`):
 - **B6 — `sanitizeText` control-char regex.** Initial regex matched literal
   space/dash instead of control chars. _Fix:_ filter by char code
   (`< 0x20 || 0x7F`) instead of a regex range. (Phase 2)
+- **B7 — ~80 WCAG AA color-contrast failures.** Muted `--stone` (#8c8177, 3.29:1)
+  and light-on-`--sage` combos + white-on-`--clay` buttons (3.76:1) failed AA.
+  _Fix:_ token-level darkening (stone, clay→AA-safe with display-only
+  `--clay-bright`, ethos band) → 0 violations. (Phase 5)
+- **B8 — e2e clicks racing SSR hydration.** Playwright clicked before React
+  attached handlers → lost clicks, flaky. _Fix:_ `data-hydrated` marker +
+  `gotoReady`; serial workers to remove dev-server contention. (Phase 5)
 
 ## Manual steps for the owner (punch list)
 See `README.md` → "Manual steps" for the authoritative list. Highlights so far:

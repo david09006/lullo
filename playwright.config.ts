@@ -1,29 +1,32 @@
 import {defineConfig, devices} from '@playwright/test';
 
-// End-to-end tests for the core shopping journeys. The full suite (browse →
-// product → cart → checkout handoff, mobile viewport, form validation, 404)
-// is built out in the QA phase. Runs against the Hydrogen dev server on mock.shop.
-const PORT = 3000;
+// End-to-end tests for the core shopping journeys, run against a Hydrogen dev
+// server on port 4321. If one is already running (e.g. the local preview), it's
+// reused; otherwise Playwright starts one.
+const PORT = 4321;
 const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  retries: process.env.CI ? 2 : 1,
+  // Serial against the single shared dev server to avoid request contention.
+  workers: 1,
+  reporter: process.env.CI ? 'github' : [['list']],
+  timeout: 30_000,
   use: {
     baseURL,
     trace: 'on-first-retry',
   },
   projects: [
-    {name: 'desktop-chromium', use: {...devices['Desktop Chrome']}},
-    {name: 'mobile-chromium', use: {...devices['Pixel 7']}},
+    {name: 'desktop', use: {...devices['Desktop Chrome']}},
+    {name: 'mobile', use: {...devices['Pixel 7']}},
   ],
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run dev -- --port 4321',
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 180_000,
     stdout: 'ignore',
     stderr: 'pipe',

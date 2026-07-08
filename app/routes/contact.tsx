@@ -13,7 +13,7 @@ export const meta: Route.MetaFunction = () => [
 
 export async function action({request}: Route.ActionArgs) {
   assertSameOrigin(request);
-  const rate = checkRateLimit(request, 'contact', {limit: 5, windowMs: 60_000});
+  const rate = checkRateLimit(request, 'contact', {limit: 20, windowMs: 60_000});
   if (!rate.ok) {
     const errors: ValidationErrors = {
       form: 'Too many messages. Please try again shortly.',

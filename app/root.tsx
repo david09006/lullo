@@ -1,3 +1,4 @@
+import {useEffect} from 'react';
 import {useNonce} from '@shopify/hydrogen';
 import {
   Outlet,
@@ -56,6 +57,12 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
  * It's a temporary fix until the issue is resolved.
  * https://github.com/remix-run/remix/issues/9242
  */
+export const meta: Route.MetaFunction = () => {
+  // Default title; leaf routes override via their own meta. Ensures error/404
+  // pages (which have no route meta) still ship a document title (a11y).
+  return [{title: 'Lullo — calm, by design'}];
+};
+
 export function links() {
   return [
     {
@@ -110,6 +117,12 @@ export function Layout({children}: {children?: React.ReactNode}) {
 
 export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
+
+  // Mark the document hydrated once the client has mounted. Harmless in prod;
+  // gives tests a reliable "interactive" signal (client handlers are attached).
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = 'true';
+  }, []);
 
   if (!data) {
     return <Outlet />;

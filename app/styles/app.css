@@ -8,15 +8,16 @@
   /* --- Palette (brand board) --------------------------------------------- */
   --ink: #2e2823; /* warm espresso — primary text */
   --ink-soft: #514a42; /* body copy on paper */
-  --stone: #8c8177; /* muted / captions */
+  --stone: #5c534a; /* muted / captions (AA on light surfaces) */
   --paper: #f5eee2; /* page background (oat) */
   --paper-2: #efe5d5; /* raised section background */
   --oat-deep: #eaddc8; /* cards / wells */
   --line: #e0d2bc; /* hairline borders */
-  --clay: #c0664a; /* primary accent / CTA */
-  --clay-deep: #9e4f38; /* clay hover / pressed */
+  --clay-bright: #c0664a; /* vibrant clay — large/display + decorative only */
+  --clay: #a85337; /* primary accent / CTA (AA with near-white text) */
+  --clay-deep: #8a4429; /* clay hover / pressed / text accent */
   --clay-tint: #f0d9cf; /* clay wash */
-  --sage: #7e8c6a; /* secondary / nature */
+  --sage: #7e8c6a; /* secondary / nature (decorative only, not behind text) */
   --sage-deep: #5f6b4e;
   --sage-tint: #dbe1cf;
   --rose: #dca98e; /* soft highlight */
@@ -367,7 +368,7 @@ select:focus-visible {
   white-space: nowrap;
 }
 .badge--new {
-  background: var(--sage);
+  background: var(--sage-deep);
   color: var(--accent-contrast);
 }
 .badge--bestseller {
@@ -380,7 +381,7 @@ select:focus-visible {
 }
 .badge--vet {
   background: var(--sage-tint);
-  color: var(--sage-deep);
+  color: #414b34;
 }
 
 .stars {
@@ -566,7 +567,7 @@ select:focus-visible {
   line-height: 1;
 }
 .wordmark__dot {
-  color: var(--clay);
+  color: var(--clay-bright);
 }
 .wordmark--lg {
   font-size: 2.4rem;
@@ -796,7 +797,7 @@ select:focus-visible {
   color: rgba(245, 238, 226, 0.5);
 }
 .newsletter__fineprint {
-  color: rgba(245, 238, 226, 0.5);
+  color: rgba(245, 238, 226, 0.68);
   font-size: 0.78rem;
   margin-top: var(--sp-3);
 }
@@ -895,7 +896,7 @@ select:focus-visible {
 }
 .hero__title em {
   font-style: italic;
-  color: var(--clay);
+  color: var(--clay-bright);
   font-variation-settings: 'SOFT' 60;
 }
 .hero__lede {
@@ -1025,7 +1026,7 @@ select:focus-visible {
 
 /* Home — ethos band */
 .ethos {
-  background: var(--sage);
+  background: #4c5738; /* deep forest sage — AA for light text at 0.86 */
   color: var(--paper);
   margin-top: var(--sp-8);
 }
@@ -1058,7 +1059,7 @@ select:focus-visible {
   max-width: 52ch;
 }
 .eyebrow--on-dark {
-  color: var(--rose);
+  color: #f2ddd0;
 }
 .ethos__copy .btn--secondary {
   --btn-fg: var(--paper);
