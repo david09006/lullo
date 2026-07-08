@@ -1,232 +1,182 @@
-import {redirect, useLoaderData} from 'react-router';
+import {Link, useLoaderData} from 'react-router';
 import type {Route} from './+types/products.$handle';
+import type {CatalogProduct} from '~/lib/catalog/types';
 import {
-  getSelectedProductOptions,
-  Analytics,
-  useOptimisticVariant,
-  getProductOptions,
-  getAdjacentAndFirstAvailableVariants,
-  useSelectedOptionInUrlParam,
-} from '@shopify/hydrogen';
-import {ProductPrice} from '~/components/ProductPrice';
-import {ProductImage} from '~/components/ProductImage';
-import {ProductForm} from '~/components/ProductForm';
-import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+  getBundleComponents,
+  getProductByHandle,
+  getRelatedProducts,
+} from '~/lib/catalog';
+import {ProductMedia} from '~/components/ProductMedia';
+import {ProductPurchase} from '~/components/ProductPurchase';
+import {ProductCard} from '~/components/ProductCard';
+import {Badges} from '~/components/Badges';
+import {Price} from '~/components/Price';
 
 export const meta: Route.MetaFunction = ({data}) => {
+  const product = data?.product;
+  if (!product) return [{title: 'Lullo | Product'}];
   return [
-    {title: `Hydrogen | ${data?.product.title ?? ''}`},
-    {
-      rel: 'canonical',
-      href: `/products/${data?.product.handle}`,
-    },
+    {title: `${product.title} — Lullo`},
+    {name: 'description', content: product.subtitle},
+    {rel: 'canonical', href: `/products/${product.handle}`},
   ];
 };
 
-export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
-
-  // Await the critical data required to render initial state of the page
-  const criticalData = await loadCriticalData(args);
-
-  return {...deferredData, ...criticalData};
-}
-
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
-async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
+export async function loader({params}: Route.LoaderArgs) {
   const {handle} = params;
-  const {storefront} = context;
-
-  if (!handle) {
-    throw new Error('Expected product handle to be defined');
-  }
-
-  const [{product}] = await Promise.all([
-    storefront.query(PRODUCT_QUERY, {
-      variables: {handle, selectedOptions: getSelectedProductOptions(request)},
-    }),
-    // Add other queries here, so that they are loaded in parallel
-  ]);
-
-  if (!product?.id) {
-    throw new Response(null, {status: 404});
-  }
-
-  // The API handle might be localized, so redirect to the localized handle
-  redirectIfHandleIsLocalized(request, {handle, data: product});
+  if (!handle) throw new Response('Not found', {status: 404});
+  const product = getProductByHandle(handle);
+  if (!product) throw new Response('Not found', {status: 404});
 
   return {
     product,
+    related: getRelatedProducts(handle, 3),
+    bundleComponents: product.bundle ? getBundleComponents(handle) : [],
   };
 }
 
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context, params}: Route.LoaderArgs) {
-  // Put any API calls that is not critical to be available on first page render
-  // For example: product reviews, product recommendations, social feeds.
-
-  return {};
-}
-
-export default function Product() {
-  const {product} = useLoaderData<typeof loader>();
-
-  // Optimistically selects a variant with given available variant information
-  const selectedVariant = useOptimisticVariant(
-    product.selectedOrFirstAvailableVariant,
-    getAdjacentAndFirstAvailableVariants(product),
-  );
-
-  // Sets the search param to the selected variant without navigation
-  // only when no search params are set in the url
-  useSelectedOptionInUrlParam(selectedVariant.selectedOptions);
-
-  // Get the product options array
-  const productOptions = getProductOptions({
-    ...product,
-    selectedOrFirstAvailableVariant: selectedVariant,
-  });
-
-  const {title, descriptionHtml} = product;
+export default function ProductRoute() {
+  const {product, related, bundleComponents} = useLoaderData<typeof loader>();
 
   return (
-    <div className="product">
-      <ProductImage image={selectedVariant?.image} />
-      <div className="product-main">
-        <h1>{title}</h1>
-        <ProductPrice
-          price={selectedVariant?.price}
-          compareAtPrice={selectedVariant?.compareAtPrice}
-        />
-        <br />
-        <ProductForm
-          productOptions={productOptions}
-          selectedVariant={selectedVariant}
-        />
-        <br />
-        <br />
-        <p>
-          <strong>Description</strong>
-        </p>
-        <br />
-        <div dangerouslySetInnerHTML={{__html: descriptionHtml}} />
-        <br />
+    <div className="product-page">
+      <div className="container">
+        <nav className="breadcrumb" aria-label="Breadcrumb">
+          <Link to="/collections/all">Shop</Link>
+          <span aria-hidden="true">/</span>
+          <Link to={`/collections/${product.category}`}>{product.category}</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{product.title}</span>
+        </nav>
+
+        <div className="product-page__grid">
+          <Gallery product={product} />
+
+          <div className="product-info">
+            <Badges badges={product.badges} />
+            <h1 className="product-info__title">{product.title}</h1>
+            <p className="product-info__subtitle">{product.subtitle}</p>
+
+            <ProductPurchase product={product} />
+
+            <ul className="trust-row">
+              <li>Free shipping over $75</li>
+              <li>30-day calm guarantee</li>
+              <li>Vet-informed design</li>
+            </ul>
+          </div>
+        </div>
+
+        {bundleComponents.length > 0 ? (
+          <BundleContents components={bundleComponents} />
+        ) : null}
+
+        <div className="product-detail">
+          <section className="product-detail__desc" aria-label="Description">
+            {/* Authored brand copy (not user input) — safe to render as HTML. */}
+            <div dangerouslySetInnerHTML={{__html: product.descriptionHtml}} />
+          </section>
+          <aside className="product-detail__specs">
+            <h2 className="product-detail__specs-title">The details</h2>
+            <dl>
+              {product.specs.map((spec) => (
+                <div className="spec" key={spec.label}>
+                  <dt>{spec.label}</dt>
+                  <dd>{spec.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </aside>
+        </div>
+
+        <ReviewsSummary product={product} />
+
+        {related.length > 0 ? (
+          <section className="section cross-sell">
+            <div className="section-head">
+              <h2>Goes well with</h2>
+            </div>
+            <div className="product-grid">
+              {related.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
-      <Analytics.ProductView
-        data={{
-          products: [
-            {
-              id: product.id,
-              title: product.title,
-              price: selectedVariant?.price.amount || '0',
-              vendor: product.vendor,
-              variantId: selectedVariant?.id || '',
-              variantTitle: selectedVariant?.title || '',
-              quantity: 1,
-            },
-          ],
-        }}
-      />
     </div>
   );
 }
 
-const PRODUCT_VARIANT_FRAGMENT = `#graphql
-  fragment ProductVariant on ProductVariant {
-    availableForSale
-    compareAtPrice {
-      amount
-      currencyCode
-    }
-    id
-    image {
-      __typename
-      id
-      url
-      altText
-      width
-      height
-    }
-    price {
-      amount
-      currencyCode
-    }
-    product {
-      title
-      handle
-    }
-    selectedOptions {
-      name
-      value
-    }
-    sku
-    title
-    unitPrice {
-      amount
-      currencyCode
-    }
-  }
-` as const;
+function Gallery({product}: {product: CatalogProduct}) {
+  return (
+    <div className="product-gallery">
+      <div className="product-gallery__main">
+        <ProductMedia image={product.featuredImage} eager sizes="(min-width: 900px) 50vw, 100vw" />
+      </div>
+      {product.images.length > 1 ? (
+        <ul className="product-gallery__thumbs">
+          {product.images.map((img) => (
+            <li key={img.id} className="product-gallery__thumb">
+              <ProductMedia image={img} sizes="120px" />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
-const PRODUCT_FRAGMENT = `#graphql
-  fragment Product on Product {
-    id
-    title
-    vendor
-    handle
-    descriptionHtml
-    description
-    encodedVariantExistence
-    encodedVariantAvailability
-    options {
-      name
-      optionValues {
-        name
-        firstSelectableVariant {
-          ...ProductVariant
-        }
-        swatch {
-          color
-          image {
-            previewImage {
-              url
-            }
-          }
-        }
-      }
-    }
-    selectedOrFirstAvailableVariant(selectedOptions: $selectedOptions, ignoreUnknownOptions: true, caseInsensitiveMatch: true) {
-      ...ProductVariant
-    }
-    adjacentVariants (selectedOptions: $selectedOptions) {
-      ...ProductVariant
-    }
-    seo {
-      description
-      title
-    }
-  }
-  ${PRODUCT_VARIANT_FRAGMENT}
-` as const;
+function BundleContents({components}: {components: CatalogProduct[]}) {
+  return (
+    <section className="bundle-contents" aria-label="What's inside">
+      <div className="section-head">
+        <div>
+          <p className="eyebrow">What’s inside</p>
+          <h2>Three things that work together</h2>
+        </div>
+      </div>
+      <ul className="bundle-contents__grid">
+        {components.map((c) => (
+          <li key={c.id} className="bundle-item">
+            <Link to={`/products/${c.handle}`} className="bundle-item__link">
+              <div className="bundle-item__media">
+                <ProductMedia image={c.featuredImage} sizes="(min-width: 700px) 30vw, 90vw" />
+              </div>
+              <div className="bundle-item__body">
+                <h3 className="bundle-item__title">{c.title}</h3>
+                <p className="bundle-item__sub">{c.subtitle}</p>
+                <Price price={c.priceRange.minVariantPrice} from />
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
-const PRODUCT_QUERY = `#graphql
-  query Product(
-    $country: CountryCode
-    $handle: String!
-    $language: LanguageCode
-    $selectedOptions: [SelectedOptionInput!]!
-  ) @inContext(country: $country, language: $language) {
-    product(handle: $handle) {
-      ...Product
-    }
-  }
-  ${PRODUCT_FRAGMENT}
-` as const;
+function ReviewsSummary({product}: {product: CatalogProduct}) {
+  const pct = Math.round((product.reviews.rating / 5) * 100);
+  return (
+    <section className="reviews" aria-label="Reviews">
+      <div className="reviews__head">
+        <div className="reviews__score">
+          <span className="reviews__number">{product.reviews.rating.toFixed(1)}</span>
+          <span
+            className="stars__glyphs reviews__stars"
+            style={{['--pct' as string]: `${pct}%`}}
+            aria-hidden="true"
+          />
+          <span className="reviews__count">
+            Based on {product.reviews.count} verified reviews
+          </span>
+        </div>
+        <p className="reviews__note">
+          Reviews are shown in aggregate here. Connect your reviews app (e.g.
+          Okendo, Judge.me) to stream individual reviews in.
+        </p>
+      </div>
+    </section>
+  );
+}

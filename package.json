@@ -18,6 +18,8 @@
   },
   "prettier": "@shopify/prettier-config",
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/hanken-grotesk": "^5.2.8",
     "@shopify/hydrogen": "2026.4.3",
     "graphql": "^16.10.0",
     "graphql-tag": "^2.12.6",

@@ -1,231 +1,90 @@
-import {Suspense} from 'react';
-import {Await, NavLink, useAsyncValue} from 'react-router';
-import {
-  type CartViewPayload,
-  useAnalytics,
-  useOptimisticCart,
-} from '@shopify/hydrogen';
-import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
+import {NavLink} from 'react-router';
 import {useAside} from '~/components/Aside';
+import {PRIMARY_NAV} from '~/lib/nav';
+import type {CartView} from '~/lib/cart/resolver';
 
-interface HeaderProps {
-  header: HeaderQuery;
-  cart: Promise<CartApiQueryFragment | null>;
-  isLoggedIn: Promise<boolean>;
-  publicStoreDomain: string;
-}
-
-type Viewport = 'desktop' | 'mobile';
-
-export function Header({
-  header,
-  isLoggedIn,
-  cart,
-  publicStoreDomain,
-}: HeaderProps) {
-  const {shop, menu} = header;
+export function Header({cart}: {cart: CartView}) {
+  const {open} = useAside();
   return (
     <header className="header">
-      <NavLink prefetch="intent" to="/" style={activeLinkStyle} end>
-        <strong>{shop.name}</strong>
-      </NavLink>
-      <HeaderMenu
-        menu={menu}
-        viewport="desktop"
-        primaryDomainUrl={header.shop.primaryDomain.url}
-        publicStoreDomain={publicStoreDomain}
-      />
-      <HeaderCtas isLoggedIn={isLoggedIn} cart={cart} />
+      <div className="header__inner container">
+        <button
+          className="header__menu-toggle"
+          onClick={() => open('mobile')}
+          aria-label="Open menu"
+        >
+          <span className="header__menu-icon" aria-hidden="true" />
+        </button>
+
+        <NavLink to="/" prefetch="intent" className="header__logo" end>
+          <span className="wordmark">
+            Lullo<span className="wordmark__dot">.</span>
+          </span>
+        </NavLink>
+
+        <nav className="header__nav" aria-label="Main">
+          {PRIMARY_NAV.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              prefetch="intent"
+              className={({isActive}) =>
+                `header__link ${isActive ? 'header__link--active' : ''}`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="header__actions">
+          <NavLink to="/search" className="header__icon-link" aria-label="Search">
+            <SearchIcon />
+          </NavLink>
+          <button
+            className="header__cart"
+            onClick={() => open('cart')}
+            aria-label={`Cart, ${cart.totalQuantity} ${
+              cart.totalQuantity === 1 ? 'item' : 'items'
+            }`}
+          >
+            <BagIcon />
+            {cart.totalQuantity > 0 ? (
+              <span className="header__cart-count" aria-hidden="true">
+                {cart.totalQuantity}
+              </span>
+            ) : null}
+          </button>
+        </div>
+      </div>
     </header>
   );
 }
 
-export function HeaderMenu({
-  menu,
-  primaryDomainUrl,
-  viewport,
-  publicStoreDomain,
-}: {
-  menu: HeaderProps['header']['menu'];
-  primaryDomainUrl: HeaderProps['header']['shop']['primaryDomain']['url'];
-  viewport: Viewport;
-  publicStoreDomain: HeaderProps['publicStoreDomain'];
-}) {
-  const className = `header-menu-${viewport}`;
-  const {close} = useAside();
-
+function SearchIcon() {
   return (
-    <nav className={className} role="navigation">
-      {viewport === 'mobile' && (
-        <NavLink
-          end
-          onClick={close}
-          prefetch="intent"
-          style={activeLinkStyle}
-          to="/"
-        >
-          Home
-        </NavLink>
-      )}
-      {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
-        if (!item.url) return null;
-
-        // if the url is internal, we strip the domain
-        const url =
-          item.url.includes('myshopify.com') ||
-          item.url.includes(publicStoreDomain) ||
-          item.url.includes(primaryDomainUrl)
-            ? new URL(item.url).pathname
-            : item.url;
-        return (
-          <NavLink
-            className="header-menu-item"
-            end
-            key={item.id}
-            onClick={close}
-            prefetch="intent"
-            style={activeLinkStyle}
-            to={url}
-          >
-            {item.title}
-          </NavLink>
-        );
-      })}
-    </nav>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.7" />
+      <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
   );
 }
 
-function HeaderCtas({
-  isLoggedIn,
-  cart,
-}: Pick<HeaderProps, 'isLoggedIn' | 'cart'>) {
+function BagIcon() {
   return (
-    <nav className="header-ctas" role="navigation">
-      <HeaderMenuMobileToggle />
-      <NavLink prefetch="intent" to="/account" style={activeLinkStyle}>
-        <Suspense fallback="Sign in">
-          <Await resolve={isLoggedIn} errorElement="Sign in">
-            {(isLoggedIn) => (isLoggedIn ? 'Account' : 'Sign in')}
-          </Await>
-        </Suspense>
-      </NavLink>
-      <SearchToggle />
-      <CartToggle cart={cart} />
-    </nav>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 8h12l-1 11a2 2 0 0 1-2 1.8H9A2 2 0 0 1 7 19L6 8Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 8a3 3 0 0 1 6 0"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
   );
-}
-
-function HeaderMenuMobileToggle() {
-  const {open} = useAside();
-  return (
-    <button
-      className="header-menu-mobile-toggle reset"
-      onClick={() => open('mobile')}
-    >
-      <h3>☰</h3>
-    </button>
-  );
-}
-
-function SearchToggle() {
-  const {open} = useAside();
-  return (
-    <button className="reset" onClick={() => open('search')}>
-      Search
-    </button>
-  );
-}
-
-function CartBadge({count}: {count: number}) {
-  const {open} = useAside();
-  const {publish, shop, cart, prevCart} = useAnalytics();
-
-  return (
-    <a
-      href="/cart"
-      onClick={(e) => {
-        e.preventDefault();
-        open('cart');
-        publish('cart_viewed', {
-          cart,
-          prevCart,
-          shop,
-          url: window.location.href || '',
-        } as CartViewPayload);
-      }}
-    >
-      Cart <span aria-label={`(items: ${count})`}>{count}</span>
-    </a>
-  );
-}
-
-function CartToggle({cart}: Pick<HeaderProps, 'cart'>) {
-  return (
-    <Suspense fallback={<CartBadge count={0} />}>
-      <Await resolve={cart}>
-        <CartBanner />
-      </Await>
-    </Suspense>
-  );
-}
-
-function CartBanner() {
-  const originalCart = useAsyncValue() as CartApiQueryFragment | null;
-  const cart = useOptimisticCart(originalCart);
-  return <CartBadge count={cart?.totalQuantity ?? 0} />;
-}
-
-const FALLBACK_HEADER_MENU = {
-  id: 'gid://shopify/Menu/199655587896',
-  items: [
-    {
-      id: 'gid://shopify/MenuItem/461609500728',
-      resourceId: null,
-      tags: [],
-      title: 'Collections',
-      type: 'HTTP',
-      url: '/collections',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609533496',
-      resourceId: null,
-      tags: [],
-      title: 'Blog',
-      type: 'HTTP',
-      url: '/blogs/journal',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609566264',
-      resourceId: null,
-      tags: [],
-      title: 'Policies',
-      type: 'HTTP',
-      url: '/policies',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609599032',
-      resourceId: 'gid://shopify/Page/92591030328',
-      tags: [],
-      title: 'About',
-      type: 'PAGE',
-      url: '/pages/about',
-      items: [],
-    },
-  ],
-};
-
-function activeLinkStyle({
-  isActive,
-  isPending,
-}: {
-  isActive: boolean;
-  isPending: boolean;
-}) {
-  return {
-    fontWeight: isActive ? 'bold' : undefined,
-    color: isPending ? 'grey' : 'black',
-  };
 }

@@ -1,4 +1,4 @@
-import {Analytics, getShopAnalytics, useNonce} from '@shopify/hydrogen';
+import {useNonce} from '@shopify/hydrogen';
 import {
   Outlet,
   useRouteError,
@@ -12,10 +12,15 @@ import {
 } from 'react-router';
 import type {Route} from './+types/root';
 import favicon from '~/assets/favicon.svg';
-import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+// Self-hosted variable fonts (no third-party requests — better CSP, privacy, perf)
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/hanken-grotesk';
 import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import {PageLayout} from './components/PageLayout';
+import {buildCartView} from '~/lib/cart/resolver';
+import {getSessionCart} from '~/lib/cart/session-cart';
+import {isCheckoutLive} from '~/lib/catalog';
 
 export type RootLoader = typeof loader;
 
@@ -66,78 +71,15 @@ export function links() {
 }
 
 export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
+  const {session, env} = args.context;
 
-  // Await the critical data required to render initial state of the page
-  const criticalData = await loadCriticalData(args);
-
-  const {storefront, env} = args.context;
+  // Local session cart — cheap + synchronous, no Storefront round-trip.
+  const cart = buildCartView(getSessionCart(session));
 
   return {
-    ...deferredData,
-    ...criticalData,
+    cart,
+    checkoutLive: isCheckoutLive(env),
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
-    shop: getShopAnalytics({
-      storefront,
-      publicStorefrontId: env.PUBLIC_STOREFRONT_ID,
-    }),
-    consent: {
-      checkoutDomain: env.PUBLIC_CHECKOUT_DOMAIN,
-      storefrontAccessToken: env.PUBLIC_STOREFRONT_API_TOKEN,
-      withPrivacyBanner: false,
-      // localize the privacy banner
-      country: args.context.storefront.i18n.country,
-      language: args.context.storefront.i18n.language,
-    },
-  };
-}
-
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
-async function loadCriticalData({context}: Route.LoaderArgs) {
-  const {storefront} = context;
-
-  const [header] = await Promise.all([
-    storefront.query(HEADER_QUERY, {
-      cache: storefront.CacheLong(),
-      variables: {
-        headerMenuHandle: 'main-menu', // Adjust to your header menu handle
-      },
-    }),
-    // Add other queries here, so that they are loaded in parallel
-  ]);
-
-  return {header};
-}
-
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context}: Route.LoaderArgs) {
-  const {storefront, customerAccount, cart} = context;
-
-  // defer the footer query (below the fold)
-  const footer = storefront
-    .query(FOOTER_QUERY, {
-      cache: storefront.CacheLong(),
-      variables: {
-        footerMenuHandle: 'footer', // Adjust to your footer menu handle
-      },
-    })
-    .catch((error: Error) => {
-      // Log query errors, but don't throw them so the page can still render
-      console.error(error);
-      return null;
-    });
-  return {
-    cart: cart.get(),
-    isLoggedIn: customerAccount.isLoggedIn(),
-    footer,
   };
 }
 
@@ -155,6 +97,9 @@ export function Layout({children}: {children?: React.ReactNode}) {
         <Links />
       </head>
       <body>
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
         {children}
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
@@ -171,15 +116,9 @@ export default function App() {
   }
 
   return (
-    <Analytics.Provider
-      cart={data.cart}
-      shop={data.shop}
-      consent={data.consent}
-    >
-      <PageLayout {...data}>
-        <Outlet />
-      </PageLayout>
-    </Analytics.Provider>
+    <PageLayout cart={data.cart} checkoutLive={data.checkoutLive}>
+      <Outlet />
+    </PageLayout>
   );
 }
 

@@ -1,174 +1,53 @@
-import {Await, Link} from 'react-router';
-import {Suspense, useId} from 'react';
-import type {
-  CartApiQueryFragment,
-  FooterQuery,
-  HeaderQuery,
-} from 'storefrontapi.generated';
+import {NavLink} from 'react-router';
 import {Aside} from '~/components/Aside';
+import {Header} from '~/components/Header';
 import {Footer} from '~/components/Footer';
-import {Header, HeaderMenu} from '~/components/Header';
-import {CartMain} from '~/components/CartMain';
-import {
-  SEARCH_ENDPOINT,
-  SearchFormPredictive,
-} from '~/components/SearchFormPredictive';
-import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
+import {CartPanel} from '~/components/CartPanel';
+import {PRIMARY_NAV} from '~/lib/nav';
+import type {CartView} from '~/lib/cart/resolver';
 
 interface PageLayoutProps {
-  cart: Promise<CartApiQueryFragment | null>;
-  footer: Promise<FooterQuery | null>;
-  header: HeaderQuery;
-  isLoggedIn: Promise<boolean>;
-  publicStoreDomain: string;
+  cart: CartView;
+  checkoutLive: boolean;
   children?: React.ReactNode;
 }
 
-export function PageLayout({
-  cart,
-  children = null,
-  footer,
-  header,
-  isLoggedIn,
-  publicStoreDomain,
-}: PageLayoutProps) {
+export function PageLayout({cart, checkoutLive, children}: PageLayoutProps) {
   return (
     <Aside.Provider>
-      <CartAside cart={cart} />
-      <SearchAside />
-      <MobileMenuAside header={header} publicStoreDomain={publicStoreDomain} />
-      {header && (
-        <Header
-          header={header}
-          cart={cart}
-          isLoggedIn={isLoggedIn}
-          publicStoreDomain={publicStoreDomain}
-        />
-      )}
-      <main>{children}</main>
-      <Footer
-        footer={footer}
-        header={header}
-        publicStoreDomain={publicStoreDomain}
-      />
+      <CartAside cart={cart} checkoutLive={checkoutLive} />
+      <MobileMenuAside />
+      <Header cart={cart} />
+      <main id="main-content">{children}</main>
+      <Footer />
     </Aside.Provider>
   );
 }
 
-function CartAside({cart}: {cart: PageLayoutProps['cart']}) {
+function CartAside({cart, checkoutLive}: {cart: CartView; checkoutLive: boolean}) {
   return (
-    <Aside type="cart" heading="CART">
-      <Suspense fallback={<p>Loading cart ...</p>}>
-        <Await resolve={cart}>
-          {(cart) => {
-            return <CartMain cart={cart} layout="aside" />;
-          }}
-        </Await>
-      </Suspense>
+    <Aside type="cart" heading="Your cart">
+      <CartPanel cart={cart} layout="aside" checkoutLive={checkoutLive} />
     </Aside>
   );
 }
 
-function SearchAside() {
-  const queriesDatalistId = useId();
+function MobileMenuAside() {
   return (
-    <Aside type="search" heading="SEARCH">
-      <div className="predictive-search">
-        <br />
-        <SearchFormPredictive>
-          {({fetchResults, goToSearch, inputRef}) => (
-            <>
-              <input
-                name="q"
-                onChange={fetchResults}
-                onFocus={fetchResults}
-                placeholder="Search"
-                ref={inputRef}
-                type="search"
-                list={queriesDatalistId}
-              />
-              &nbsp;
-              <button onClick={goToSearch}>Search</button>
-            </>
-          )}
-        </SearchFormPredictive>
-
-        <SearchResultsPredictive>
-          {({items, total, term, state, closeSearch}) => {
-            const {articles, collections, pages, products, queries} = items;
-
-            if (state === 'loading' && term.current) {
-              return <div>Loading...</div>;
-            }
-
-            if (!total) {
-              return <SearchResultsPredictive.Empty term={term} />;
-            }
-
-            return (
-              <>
-                <SearchResultsPredictive.Queries
-                  queries={queries}
-                  queriesDatalistId={queriesDatalistId}
-                />
-                <SearchResultsPredictive.Products
-                  products={products}
-                  closeSearch={closeSearch}
-                  term={term}
-                />
-                <SearchResultsPredictive.Collections
-                  collections={collections}
-                  closeSearch={closeSearch}
-                  term={term}
-                />
-                <SearchResultsPredictive.Pages
-                  pages={pages}
-                  closeSearch={closeSearch}
-                  term={term}
-                />
-                <SearchResultsPredictive.Articles
-                  articles={articles}
-                  closeSearch={closeSearch}
-                  term={term}
-                />
-                {term.current && total ? (
-                  <Link
-                    onClick={closeSearch}
-                    to={`${SEARCH_ENDPOINT}?q=${term.current}`}
-                  >
-                    <p>
-                      View all results for <q>{term.current}</q>
-                      &nbsp; →
-                    </p>
-                  </Link>
-                ) : null}
-              </>
-            );
-          }}
-        </SearchResultsPredictive>
-      </div>
+    <Aside type="mobile" heading="Menu">
+      <nav className="mobile-nav" aria-label="Main">
+        {PRIMARY_NAV.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className="mobile-nav__link"
+            prefetch="intent"
+            end={item.to === '/'}
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
     </Aside>
-  );
-}
-
-function MobileMenuAside({
-  header,
-  publicStoreDomain,
-}: {
-  header: PageLayoutProps['header'];
-  publicStoreDomain: PageLayoutProps['publicStoreDomain'];
-}) {
-  return (
-    header.menu &&
-    header.shop.primaryDomain?.url && (
-      <Aside type="mobile" heading="MENU">
-        <HeaderMenu
-          menu={header.menu}
-          viewport="mobile"
-          primaryDomainUrl={header.shop.primaryDomain.url}
-          publicStoreDomain={publicStoreDomain}
-        />
-      </Aside>
-    )
   );
 }

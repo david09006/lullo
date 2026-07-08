@@ -1,113 +1,42 @@
-import {useLoaderData, data, type HeadersFunction} from 'react-router';
+import {data, redirect, useLoaderData} from 'react-router';
 import type {Route} from './+types/cart';
-import type {CartQueryDataReturn} from '@shopify/hydrogen';
-import {CartForm} from '@shopify/hydrogen';
-import {CartMain} from '~/components/CartMain';
+import {handleCartAction} from '~/lib/cart/actions';
+import {getSessionCart} from '~/lib/cart/session-cart';
+import {buildCartView} from '~/lib/cart/resolver';
+import {isCheckoutLive} from '~/lib/catalog';
+import {CartPanel} from '~/components/CartPanel';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: `Hydrogen | Cart`}];
+  return [{title: 'Lullo | Your cart'}];
 };
 
-export const headers: HeadersFunction = ({actionHeaders}) => actionHeaders;
-
 export async function action({request, context}: Route.ActionArgs) {
-  const {cart} = context;
-
   const formData = await request.formData();
+  const result = await handleCartAction(context.session, formData);
 
-  const {action, inputs} = CartForm.getFormInput(formData);
-
-  if (!action) {
-    throw new Error('No action provided');
+  // Progressive enhancement: a no-JS form can pass redirectTo to navigate.
+  const redirectTo = formData.get('redirectTo');
+  if (typeof redirectTo === 'string' && redirectTo.startsWith('/')) {
+    return redirect(redirectTo);
   }
 
-  let status = 200;
-  let result: CartQueryDataReturn;
-
-  switch (action) {
-    case CartForm.ACTIONS.LinesAdd:
-      result = await cart.addLines(inputs.lines);
-      break;
-    case CartForm.ACTIONS.LinesUpdate:
-      result = await cart.updateLines(inputs.lines);
-      break;
-    case CartForm.ACTIONS.LinesRemove:
-      result = await cart.removeLines(inputs.lineIds);
-      break;
-    case CartForm.ACTIONS.DiscountCodesUpdate: {
-      const formDiscountCode = inputs.discountCode;
-
-      // User inputted discount code
-      const discountCodes = (
-        formDiscountCode ? [formDiscountCode] : []
-      ) as string[];
-
-      // Combine discount codes already applied on cart
-      discountCodes.push(...inputs.discountCodes);
-
-      result = await cart.updateDiscountCodes(discountCodes);
-      break;
-    }
-    case CartForm.ACTIONS.GiftCardCodesAdd: {
-      const formGiftCardCode = inputs.giftCardCode;
-
-      const giftCardCodes = (
-        formGiftCardCode ? [formGiftCardCode] : []
-      ) as string[];
-
-      result = await cart.addGiftCardCodes(giftCardCodes);
-      break;
-    }
-    case CartForm.ACTIONS.GiftCardCodesRemove: {
-      const appliedGiftCardIds = inputs.giftCardCodes as string[];
-      result = await cart.removeGiftCardCodes(appliedGiftCardIds);
-      break;
-    }
-    case CartForm.ACTIONS.BuyerIdentityUpdate: {
-      result = await cart.updateBuyerIdentity({
-        ...inputs.buyerIdentity,
-      });
-      break;
-    }
-    default:
-      throw new Error(`${action} cart action is not defined`);
-  }
-
-  const cartId = result?.cart?.id;
-  const headers = cartId ? cart.setCartId(result.cart.id) : new Headers();
-  const {cart: cartResult, errors, warnings} = result;
-
-  const redirectTo = formData.get('redirectTo') ?? null;
-  if (typeof redirectTo === 'string') {
-    status = 303;
-    headers.set('Location', redirectTo);
-  }
-
-  return data(
-    {
-      cart: cartResult,
-      errors,
-      warnings,
-      analytics: {
-        cartId,
-      },
-    },
-    {status, headers},
-  );
+  return data(result, {status: result.ok ? 200 : 400});
 }
 
 export async function loader({context}: Route.LoaderArgs) {
-  const {cart} = context;
-  return await cart.get();
+  const cart = buildCartView(getSessionCart(context.session));
+  return {cart, checkoutLive: isCheckoutLive(context.env)};
 }
 
-export default function Cart() {
-  const cart = useLoaderData<typeof loader>();
-
+export default function CartRoute() {
+  const {cart, checkoutLive} = useLoaderData<typeof loader>();
   return (
-    <div className="cart">
-      <h1>Cart</h1>
-      <CartMain layout="page" cart={cart} />
+    <div className="container section">
+      <header className="cart-page__head">
+        <p className="eyebrow">Your cart</p>
+        <h1>The good stuff</h1>
+      </header>
+      <CartPanel cart={cart} layout="page" checkoutLive={checkoutLive} />
     </div>
   );
 }
