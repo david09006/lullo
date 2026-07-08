@@ -32,6 +32,17 @@ stays on Shopify (PCI-safe). Public Storefront token only — no Admin token.
 
 ## Phase log
 
+### Phase 3 — content pages + custom 404
+- Built **About/story** (editorial origin story + values), **FAQ** (native
+  `<details>` accordion — accessible, no-JS friendly), **Contact** (validated,
+  rate-limited, honeypot-protected form with inline errors + success state),
+  **Shipping & Returns**, **Privacy** (starter template, flagged for counsel).
+- **Custom 404 / error page** via root `ErrorBoundary` — branded ("Lost the
+  scent → This page has wandered off"), with home + shop CTAs.
+- Verified live: 404, contact form (empty-submit shows server-side "required"
+  errors), session cart persists across navigation (badge count survives). Gate
+  green (typecheck, lint, 39 tests, build).
+
 ### Phase 2 — design system, art direction, Home + Product (+ shell)
 - **Design tokens** (`app/styles/app.css`): full Warm Clay & Oat system — palette,
   fluid type scale, spacing, radius/shadow/motion — all CSS custom properties, no

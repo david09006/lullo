@@ -124,25 +124,36 @@ export default function App() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  let errorMessage = 'Unknown error';
   let errorStatus = 500;
 
   if (isRouteErrorResponse(error)) {
-    errorMessage = error?.data?.message ?? error.data;
     errorStatus = error.status;
-  } else if (error instanceof Error) {
-    errorMessage = error.message;
   }
 
+  const isNotFound = errorStatus === 404;
+
   return (
-    <div className="route-error">
-      <h1>Oops</h1>
-      <h2>{errorStatus}</h2>
-      {errorMessage && (
-        <fieldset>
-          <pre>{errorMessage}</pre>
-        </fieldset>
-      )}
+    <div className="error-page container container-narrow">
+      <p className="eyebrow">{isNotFound ? 'Lost the scent' : 'Something went sideways'}</p>
+      <h1 className="error-page__code">{errorStatus}</h1>
+      <p className="error-page__title">
+        {isNotFound
+          ? 'This page has wandered off.'
+          : 'A hiccup on our end.'}
+      </p>
+      <p className="error-page__body">
+        {isNotFound
+          ? 'The page you’re after isn’t here — it may have moved, or the link was mistyped. Let’s get you back to the calm.'
+          : 'We’ve been notified and we’re on it. Try again in a moment, or head back home.'}
+      </p>
+      <div className="error-page__actions">
+        <a href="/" className="btn">
+          Back home
+        </a>
+        <a href="/collections/all" className="btn btn--secondary">
+          Shop all
+        </a>
+      </div>
     </div>
   );
 }
