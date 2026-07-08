@@ -7,3 +7,9 @@ node_modules
 .env
 .shopify
 .react-router
+
+# test + build artifacts
+*.tsbuildinfo
+/test-results
+/playwright-report
+/playwright/.cache

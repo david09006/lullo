@@ -237,6 +237,12 @@ export default [
         ...globals.jest,
       },
     },
+    settings: {
+      // We run Vitest, whose API mirrors Jest's, so eslint-plugin-jest's rules
+      // apply — but it can't auto-detect a Jest version (Jest isn't installed).
+      // Pin it so version-gated rules don't crash.
+      jest: {version: 29},
+    },
   },
   {
     files: ['**/*.server.*'],
