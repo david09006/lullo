@@ -45,6 +45,14 @@ stays on Shopify (PCI-safe). Public Storefront token only — no Admin token.
 - **Fixes**: raised form rate limits 5→20/min (shared-IP + test tolerance);
   hydration marker (`data-hydrated`) + `gotoReady` helper so e2e clicks don't
   race SSR hydration. Total **49 unit + 36 e2e** tests green; gate green.
+- **Lighthouse** (production build, desktop preset, localhost):
+  - Home — Perf 100 · A11y 100 · Best-Practices 100 · SEO 100
+  - Product — 100 · 100 · 100 · 100
+  - Collection — 100 · 98 · 100 · 100
+  All ≥90 across the board. Caveat: measured with SVG placeholders (no heavy
+  images) on localhost — **re-measure at launch** once real product photography
+  + CDN are in, as images are the usual Performance variable. Client JS ≈ 360 KB
+  uncompressed (well within budget).
 
 ### Phase 4 — security hardening
 - **Security headers** (`app/lib/security.ts`, applied in `server.ts`; CSP in
