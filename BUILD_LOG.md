@@ -32,6 +32,36 @@ stays on Shopify (PCI-safe). Public Storefront token only — no Admin token.
 
 ## Phase log
 
+### Phase 1 — data layer & catalog adapter
+- **D5 — Normalized catalog model as the interface.** Rather than force local
+  data through Hydrogen's Storefront-coupled variant utilities
+  (`getProductOptions`, `encodedVariantExistence`, …), the app's components
+  depend on a normalized internal model (`app/lib/catalog/types.ts`). The adapter
+  (`app/lib/catalog/index.ts`) maps _either_ local Lullo data _or_ (later) a real
+  Storefront API response into that model — one clean seam, fully unit-testable,
+  and the stock Storefront-coupled routes/components get replaced by design-system
+  components in Phase 2/3.
+- **D6 — Placeholder imagery as SVG treatment.** No real photos yet, so product
+  media renders a deterministic, on-brand SVG placeholder (4:5, soft shadow, oat
+  ground, per-product palette) via a `ProductMedia` component. Each slot is a
+  clearly-marked swap point for real `<Image>`/photography.
+
+Built (`app/lib/catalog/` + `app/lib/cart/`):
+- **Catalog** — `types.ts` (normalized model), `build.ts` (money/variant/price
+  helpers, cartesian variant builder), `products.ts` (9 single products across
+  beds/mats/bowls/vests/collars/crates + 3 Calm Kit bundles, warm vet-informed
+  copy), `index.ts` (adapter: featured/related/search/collections, computed
+  bundle savings, `resolveSource`/`isCheckoutLive` go-live seam).
+- **Cart** — `money.ts` (integer-cents math, no float drift), `logic.ts` (pure
+  add/update/remove/clamp + `calculateCartCost` with unavailable-variant
+  handling), `resolver.ts` (catalog price resolver + `buildCartView` render
+  model), `session-cart.ts` (HttpOnly-cookie persistence, malformed-cookie
+  tolerant; stores only line ids + quantities, never prices/PII).
+- **Tests: 39 passing** across catalog/money/cart-logic/bridge (bundle-savings
+  truthfulness, float-safety, out-of-stock + failed-lookup edge cases). Typecheck
+  + lint clean. Routes still render mock.shop data — rewired to the catalog in
+  Phase 2/3 alongside the design-system components.
+
 ### Phase 0 — scaffold & tooling
 - Scaffolded Hydrogen storefront at `/Users/david/lullo` (TypeScript, mock.shop,
   plain CSS). Routes generated for home, products, collections, cart, search,
