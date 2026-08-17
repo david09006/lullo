@@ -13,3 +13,6 @@ node_modules
 /test-results
 /playwright-report
 /playwright/.cache
+
+# macOS
+.DS_Store
